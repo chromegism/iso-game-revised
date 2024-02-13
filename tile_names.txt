@@ -1,0 +1,9 @@
+water3.png 1
+water2.png 2
+water1.png 3
+sand2.png 4
+sand1.png 5
+grass1.png 6
+rock1.png 7
+rock2.png 8
+snow1.png 9
