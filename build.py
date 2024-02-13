@@ -256,7 +256,7 @@ class Chunk_Group:
         for c in tqdm(self.chunks):
             c.build()
 
-def create_noise(q, x, y, names, alive, from_file=False):
+def create_noise(q, x, y, names, alive, from_file=False, load_file=None):
     test_noise = Noise_Terrain((2, 6), (x, y), base=4)
 
     if not from_file:
@@ -267,7 +267,7 @@ def create_noise(q, x, y, names, alive, from_file=False):
         pack_world('save')
 
     else:
-        unpack_world('save')
+        unpack_world(load_file)
         test_noise.load_from_file()
         rm_temp_world()
 
@@ -279,6 +279,11 @@ def create_noise(q, x, y, names, alive, from_file=False):
     alive.value = 0
 
 def main():
+    args = sys.argv[1:]
+    if len(args) > 0:
+        load = True
+        load_file = args[0]
+
     WIDTH = 1280
     HEIGHT = 720
 
@@ -315,7 +320,7 @@ def main():
     mp.set_start_method('spawn')
     process_alive = mp.Value('i', 1)
     q = mp.Queue()
-    noise_process = mp.Process(target=create_noise, args=[q, CHUNKSX, CHUNKSY, tile_names, process_alive, False], daemon=True)
+    noise_process = mp.Process(target=create_noise, args=[q, CHUNKSX, CHUNKSY, tile_names, process_alive, load, load_file], daemon=True)
     noise_process.start()
 
     while process_alive.value == 1:
@@ -424,7 +429,7 @@ def main():
         world.render_chunks(1.5, viewport_pos, (WIDTH, HEIGHT), zoom)
 
         renderer.present()
-        print(clock.get_fps())
+        # print(clock.get_fps())
 
 if __name__ == '__main__':
     main()
