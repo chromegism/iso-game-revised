@@ -282,8 +282,8 @@ def main():
     WIDTH = 1280
     HEIGHT = 720
 
-    CHUNKSX = 8
-    CHUNKSY = 8
+    CHUNKSX = 64
+    CHUNKSY = 64
 
     window = sdl2.video.Window('isometric game', (WIDTH, HEIGHT))
     window.resizable = True
