@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 
 import shutil
 
-global sprites
-sprites = {}
+global layers
+layers = {}
 
 def sign(x: int | float):
     if x != 0:
@@ -183,14 +183,14 @@ class Chunk:
     def build(self):
         for tile in self.tiles:
             if tile[-1] not in self.spritenames:
-                raise IndexError(f'tile "{tile[-1]}" not found in sprites')
+                raise IndexError(f'tile "{tile[-1]}" not found in layers')
             
             else:
                 x, y = to_cartesian((tile[0], tile[1]))
                 z = tile[2]
 
                 spr = sdl2_sprite(self.renderer)
-                spr.texture = sprites[tile[-1]]
+                spr.texture = layers[tile[-1]]
                 w = spr.texture.width
                 h = w / 2
                 th = spr.texture.height
@@ -301,11 +301,11 @@ def main():
 
     tile_names = [x[0][:-4] for x in split_tile_file]
 
-    tile_images = [pygame.image.load(f'sprites/{x[0]}') for x in split_tile_file]
+    tile_images = [pygame.image.load(f'layers/{x[0]}') for x in split_tile_file]
     tile_textures = [sdl2.video.Texture.from_surface(renderer, x) for x in tile_images]
 
     for i, name in enumerate(tile_names):
-        sprites[name] = tile_textures[i]
+        layers[name] = tile_textures[i]
 
     viewport_pos =  [0, 0]
     zoom = 1
@@ -424,6 +424,7 @@ def main():
         world.render_chunks(1.5, viewport_pos, (WIDTH, HEIGHT), zoom)
 
         renderer.present()
+        print(clock.get_fps())
 
 if __name__ == '__main__':
     main()
