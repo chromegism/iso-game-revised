@@ -2,7 +2,7 @@
 
 ![Layers diagram](https://github.com/chromegism/iso-game-revised/blob/master/readmedata/LayersDiagram.png)
 
-<h1>Layer Generation Process</h1>
+<h1>Terrain Generation Process</h1>
 
 <ul>
     <li>Load images from files</li>
