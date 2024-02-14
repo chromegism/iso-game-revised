@@ -5,8 +5,8 @@
 <h2>Tile Contents</h2>
 
 <ul>
-    <li>texture</li>
-    <li>rect</li>
+    <li>Texture</li>
+    <li>Rect (tile is 64x48, sprites are 64xAnything)</li>
 </ul>
 
 <h1>Terrain Generation Process</h1>
