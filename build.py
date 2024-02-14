@@ -7,6 +7,7 @@ import pygame
 import pygame._sdl2 as sdl2
 
 import sys
+import random
 from scipy.ndimage import gaussian_filter
 from tqdm import tqdm
 
@@ -240,15 +241,15 @@ class Chunk_Group:
     def sort_chunks(self):
         self.chunks.sort(key=lambda i: i.x + i.y)
 
-    def render_chunks(self, render_distance: float | int, viewport_pos: tuple | list, viewport_size: tuple | list, zoom: float | int):
-        viewport_center = to_cartesian(((- viewport_pos[0] + (viewport_size[0] / 2 * zoom)) / (64 * 32),(- viewport_pos[1]) / (32 * 32)))
+    def render_chunks(self, render_distance: float | int, viewport_pos: tuple | list, viewport_size: tuple | list):
+        viewport_center = to_cartesian(((- viewport_pos[0] + (viewport_size[0] / 2)) / (64 * 32),(- viewport_pos[1]) / (32 * 32)))
         # viewport_center = to_cartesian((- viewport_pos[0] / (64 * 32), - viewport_pos[1] / (32 * 32)))
 
         for c in self.chunks:
             if c.x - viewport_center[0] >= - render_distance and c.x - viewport_center[0] <= render_distance and c.y - viewport_center[1] >= - render_distance and c.y - viewport_center[1] <= render_distance:
                 x, y = to_cartesian((c.x, c.y))
 
-                c.blit_on((viewport_pos[0] + x * 32 * 32, viewport_pos[1] + y * 16 * 32), (viewport_size[0] * zoom, viewport_size[1] * zoom))
+                c.blit_on((viewport_pos[0] + x * 32 * 32, viewport_pos[1] + y * 16 * 32), (viewport_size[0], viewport_size[1]))
 
     def build_chunks(self):
         print(f'rendering chunks')
@@ -280,6 +281,8 @@ def create_noise(q, x, y, names, alive, from_file=False, load_file=None):
 
 def main():
     args = sys.argv[1:]
+    load = False
+    load_file = None
     if len(args) > 0:
         load = True
         load_file = args[0]
@@ -287,12 +290,16 @@ def main():
     WIDTH = 1280
     HEIGHT = 720
 
-    CHUNKSX = 64
-    CHUNKSY = 64
+    BASE_WIDTH = 1920
+    BASE_HEIGHT = 1080
+
+    CHUNKSX = 8
+    CHUNKSY = 8
 
     window = sdl2.video.Window('isometric game', (WIDTH, HEIGHT))
     window.resizable = True
     renderer = sdl2.video.Renderer(window, accelerated = 1, vsync = True)
+    renderer.logical_size = (WIDTH, HEIGHT)
 
     clock = pygame.time.Clock()
 
@@ -312,9 +319,9 @@ def main():
     for i, name in enumerate(tile_names):
         layers[name] = tile_textures[i]
 
-    viewport_pos =  [0, 0]
-    zoom = 1
+    viewport_pos = [0, 0]
 
+    window.set_icon(random.choice(tile_images))
     fullscreen = False
 
     mp.set_start_method('spawn')
@@ -415,7 +422,7 @@ def main():
                 WIDTH = window.size[0]
                 HEIGHT = window.size[1]
 
-                renderer.set_viewport(pygame.Rect(0, 0, WIDTH, HEIGHT))
+                renderer.logical_size = (BASE_WIDTH, BASE_HEIGHT)
 
         mouse_clicked = pygame.mouse.get_pressed()
 
@@ -423,10 +430,10 @@ def main():
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
         if mouse_clicked[0]:
-            viewport_pos[0] += (mouse_x - last_mouse_x) * zoom
-            viewport_pos[1] += (mouse_y - last_mouse_y) * zoom
+            viewport_pos[0] += (mouse_x - last_mouse_x) * (BASE_WIDTH / WIDTH)
+            viewport_pos[1] += (mouse_y - last_mouse_y) * (BASE_HEIGHT / HEIGHT)
 
-        world.render_chunks(1.5, viewport_pos, (WIDTH, HEIGHT), zoom)
+        world.render_chunks(1.5, viewport_pos, (BASE_WIDTH, BASE_HEIGHT))
 
         renderer.present()
         # print(clock.get_fps())
