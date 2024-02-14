@@ -2,6 +2,13 @@
 
 ![Layers diagram](https://github.com/chromegism/iso-game-revised/blob/master/readmedata/LayersDiagram.png)
 
+<h2>Tile Contents</h2>
+
+<ul>
+    <li>texture</li>
+    <li>rect</li>
+</ul>
+
 <h1>Terrain Generation Process</h1>
 
 <ul>
