@@ -11,7 +11,7 @@
 
 <h1>Terrain Generation Process</h1>
 
-<ul>
+<ol>
     <li>Load images from files</li>
     <li>Create parallel process for generation</li>
     <li>Checks if it needs to load or generate terrain</li>
@@ -21,4 +21,4 @@
     <li>Groups these chunks into a Chunk_Group object</li>
     <li>Sends back data to the main process from the subprocess</li>
     <li>Renders everything in the Chunk_Group object to be displayed on the screen</li>
-</ul>
+</ol>
