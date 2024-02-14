@@ -12,6 +12,6 @@
     <li>If generate, uses Perlin noise to generate a map with the specified dimensions</li>
     <li>Converts to raw numerical data into sdl2_sprite objects, and then groups them into Chunks using Tile_Groups</li>
     <li>Groups these chunks into a Chunk_Group object</li>
-    <li>sends back data to the main process from the subprocess</li>
+    <li>Sends back data to the main process from the subprocess</li>
     <li>Renders everything in the Chunk_Group object to be displayed on the screen</li>
 </ul>
