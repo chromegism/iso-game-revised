@@ -430,8 +430,8 @@ def main():
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
         if mouse_clicked[0]:
-            viewport_pos[0] += (mouse_x - last_mouse_x) * (BASE_WIDTH / WIDTH)
-            viewport_pos[1] += (mouse_y - last_mouse_y) * (BASE_HEIGHT / HEIGHT)
+            viewport_pos[0] += (mouse_x - last_mouse_x) * max((BASE_WIDTH / WIDTH), (BASE_HEIGHT / HEIGHT))
+            viewport_pos[1] += (mouse_y - last_mouse_y) * max((BASE_WIDTH / WIDTH), (BASE_HEIGHT / HEIGHT))
 
         world.render_chunks(1.5, viewport_pos, (BASE_WIDTH, BASE_HEIGHT))
 
