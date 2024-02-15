@@ -366,6 +366,7 @@ def main():
                 HEIGHT = window.size[1]
 
                 renderer.set_viewport(pygame.Rect(0, 0, WIDTH, HEIGHT))
+                renderer.logical_size = (BASE_WIDTH, BASE_HEIGHT)
 
         renderer.present()
 
@@ -422,6 +423,7 @@ def main():
                 WIDTH = window.size[0]
                 HEIGHT = window.size[1]
 
+                renderer.set_viewport(pygame.Rect(0, 0, WIDTH, HEIGHT))
                 renderer.logical_size = (BASE_WIDTH, BASE_HEIGHT)
 
         mouse_clicked = pygame.mouse.get_pressed()
