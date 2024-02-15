@@ -15,7 +15,6 @@ from perlin_noise import PerlinNoise
 from math import *
 import numpy as np
 import multiprocessing as mp
-import matplotlib.pyplot as plt
 
 import shutil
 

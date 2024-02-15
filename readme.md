@@ -22,3 +22,13 @@
     <li>Sends back data to the main process from the subprocess</li>
     <li>Renders everything in the Chunk_Group object to be displayed on the screen</li>
 </ol>
+
+<h1>Dependencies</h1>
+
+<ul>
+    <li>pygame-ce</li>
+    <li>scipy</li>
+    <li>tqdm</li>
+    <li>perlin_noise</li>
+    <li>numpy</li>
+</ul>
