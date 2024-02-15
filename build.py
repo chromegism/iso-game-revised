@@ -296,6 +296,8 @@ def main():
     CHUNKSX = 8
     CHUNKSY = 8
 
+    zoom = 1
+
     window = sdl2.video.Window('isometric game', (WIDTH, HEIGHT))
     window.resizable = True
     renderer = sdl2.video.Renderer(window, accelerated = 1, vsync = True)
@@ -424,7 +426,14 @@ def main():
                 HEIGHT = window.size[1]
 
                 renderer.set_viewport(pygame.Rect(0, 0, WIDTH, HEIGHT))
-                renderer.logical_size = (BASE_WIDTH, BASE_HEIGHT)
+                renderer.logical_size = (BASE_WIDTH * zoom, BASE_HEIGHT * zoom)
+
+            elif event.type == pygame.MOUSEWHEEL:
+                zoom += sign(event.y) / 10
+                zoom = max(0.2, zoom)
+                zoom = min(zoom, 5)
+
+                renderer.logical_size = (BASE_WIDTH * zoom, BASE_HEIGHT * zoom)
 
         mouse_clicked = pygame.mouse.get_pressed()
 
@@ -432,10 +441,10 @@ def main():
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
         if mouse_clicked[0]:
-            viewport_pos[0] += (mouse_x - last_mouse_x) * max((BASE_WIDTH / WIDTH), (BASE_HEIGHT / HEIGHT))
-            viewport_pos[1] += (mouse_y - last_mouse_y) * max((BASE_WIDTH / WIDTH), (BASE_HEIGHT / HEIGHT))
+            viewport_pos[0] += (mouse_x - last_mouse_x) * max((BASE_WIDTH / WIDTH), (BASE_HEIGHT / HEIGHT)) * zoom
+            viewport_pos[1] += (mouse_y - last_mouse_y) * max((BASE_WIDTH / WIDTH), (BASE_HEIGHT / HEIGHT)) * zoom
 
-        world.render_chunks(1.5, viewport_pos, (BASE_WIDTH, BASE_HEIGHT))
+        world.render_chunks(1.5, viewport_pos, (BASE_WIDTH * zoom, BASE_HEIGHT * zoom))
 
         renderer.present()
         # print(clock.get_fps())
