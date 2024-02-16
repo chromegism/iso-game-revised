@@ -18,8 +18,8 @@ import multiprocessing as mp
 
 import shutil
 
-global layers
-layers = {}
+global layers, sprites
+layers, sprites = {}, {}
 
 def sign(x: int | float):
     if x != 0:
@@ -130,8 +130,8 @@ def rm_temp_world():
 
     os.rmdir('map')
 
-class sdl2_sprite:
-    def __init__(self, texture: sdl2.video.Texture, rect: pygame.Rect | tuple | list | None = None):
+class sdl2_tile:
+    def __init__(self, texture: sdl2.video.Texture, rect: pygame.Rect | None = None):
         self.texture = texture
         self.rect = rect
 
@@ -160,12 +160,47 @@ class Tile_Group:
         for i in fblits_pass:
             renderer.blit(i[0], pygame.Rect(i[1][0], i[1][1], i[0].width, i[0].height))
 
-    def add(self, tile: sdl2_sprite):
+    def add(self, tile: sdl2_tile):
+        self.tiles.append(tile)
+
+class sdl2_sprite:
+    def __init__(self, texture: sdl2.video.Texture, tiles_size: tuple | list, rect: pygame.Rect | None = None):
+        self.texture = texture
+        self.rect = rect
+        self.tilesx = tiles_size[0]
+        self.tilesy = tiles_size[1]
+
+class Sprite_Group:
+    def __init__(self, tiles: list | tuple):
+        self.tiles = list(tiles)
+
+    def is_in_bounds(self, i, viewport_size):
+        if i[1][0] + i[0].width >= - i[2][0] * 64 and i[1][0] <= viewport_size[0] + i[2][0] * 64:
+                if i[1][1] + i[0].height >= - i[2][1] * 32 and i[1][1] <= viewport_size[1] + i[2][1] * 32:
+                    return True
+                
+        return False
+
+    def draw(self, renderer: sdl2.video.Renderer, viewport_pos: tuple | list, viewport_size: tuple | list):
+        x_off = viewport_pos[0]
+        y_off = viewport_pos[1]
+
+        fblits_pass = [
+            (spr.texture, (spr.rect.x + x_off, spr.rect.y + y_off), (spr.tilesx, spr.tilesy))
+            for spr in self.tiles
+        ]
+
+        fblits_pass = [tile for tile in fblits_pass if self.is_in_bounds(tile, viewport_size)]
+
+        for i in fblits_pass:
+            renderer.blit(i[0], pygame.Rect(i[1][0], i[1][1] - 16 + i[0].height, i[0].width, i[0].height))
+
+    def add(self, tile: sdl2_tile):
         self.tiles.append(tile)
 
 class Chunk:
     '''A 32x32 chunk of tiles, buildings and entities'''
-    def __init__(self, pos: tuple | list, renderer: sdl2.video.Renderer, spritenames: tuple | list, spriteimgs: tuple | list, tiles = list | tuple):
+    def __init__(self, pos: tuple | list, renderer: sdl2.video.Renderer, layernames: tuple | list, layerimgs: tuple | list, tiles = list | tuple):
         self.x = pos[0]
         self.y = pos[1]
 
@@ -174,22 +209,22 @@ class Chunk:
         self.tile_group = Tile_Group([])
         self.tiles = tiles
 
-        self.spritenames = spritenames
-        self.spriteimgs = spriteimgs
+        self.layernames = layernames
+        self.layerimgs = layerimgs
 
     def sort_tiles(self):
         self.tiles.sort(key = lambda x: x[0] + x[1])
 
     def build(self):
         for tile in self.tiles:
-            if tile[-1] not in self.spritenames:
+            if tile[-1] not in self.layernames:
                 raise IndexError(f'tile "{tile[-1]}" not found in layers')
             
             else:
                 x, y = to_cartesian((tile[0], tile[1]))
                 z = tile[2]
 
-                spr = sdl2_sprite(self.renderer)
+                spr = sdl2_tile(self.renderer)
                 spr.texture = layers[tile[-1]]
                 w = spr.texture.width
                 h = w / 2
@@ -295,7 +330,7 @@ def main():
     CHUNKSX = 8
     CHUNKSY = 8
 
-    zoom = 1
+    zoom = 0.75
 
     window = sdl2.video.Window('isometric game', (WIDTH, HEIGHT))
     window.resizable = True
@@ -327,6 +362,16 @@ def main():
 
     tile_images = [pygame.image.load(f'layers/{x[0]}') for x in split_tile_file]
     tile_textures = [sdl2.video.Texture.from_surface(renderer, x) for x in tile_images]
+
+    for i, name in enumerate(tile_names):
+        layers[name] = tile_textures[i]
+
+    split_sprite_file = os.listdir("sprites/")
+
+    sprite_names = [x[:-4] for x in split_sprite_file]
+
+    sprite_images = [pygame.image.load(f'sprites/{x}') for x in split_sprite_file]
+    sprite_textures = [sdl2.video.Texture.from_surface(renderer, x) for x in sprite_images]
 
     for i, name in enumerate(tile_names):
         layers[name] = tile_textures[i]
@@ -403,6 +448,9 @@ def main():
 
     world.build_chunks()
 
+    spr = sdl2_sprite(sprite_textures[2], (2, 2), pygame.Rect(-1, 0, 128, 128))
+    sprgr = Sprite_Group([spr])
+
     while True:
         renderer.clear()
         dt = clock.tick()
@@ -450,11 +498,21 @@ def main():
                     renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
 
             elif event.type == pygame.MOUSEWHEEL:
-                zoom += sign(event.y) / 10
-                zoom = max(0.2, zoom)
-                zoom = min(zoom, 5)
+                zoom += - sign(event.y) / 20
+                zoom = max(0.1, zoom)
+                zoom = min(zoom, 2)
 
-                renderer.logical_size = (BASE_WIDTH * zoom, BASE_HEIGHT * zoom)
+                bwbh_wh_ratio = (BASE_HEIGHT * WIDTH) / (BASE_WIDTH * HEIGHT)
+
+                if bwbh_wh_ratio < 1:
+                    LOGICAL_WIDTH = BASE_WIDTH * min(1, bwbh_wh_ratio)
+                    LOGICAL_HEIGHT = BASE_HEIGHT * max(1, bwbh_wh_ratio)
+                    renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
+
+                else:
+                    LOGICAL_WIDTH = BASE_WIDTH * max(1, 1 / bwbh_wh_ratio)
+                    LOGICAL_HEIGHT = BASE_HEIGHT * min(1, 1 / bwbh_wh_ratio)
+                    renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
 
         mouse_clicked = pygame.mouse.get_pressed()
 
@@ -466,6 +524,8 @@ def main():
             viewport_pos[1] += (mouse_y - last_mouse_y) * (LOGICAL_HEIGHT / HEIGHT) * zoom
 
         world.render_chunks(1.5, viewport_pos, (BASE_WIDTH * zoom, BASE_HEIGHT * zoom))
+
+        sprgr.draw(renderer, viewport_pos, (BASE_WIDTH * zoom, BASE_HEIGHT * zoom))
 
         renderer.present()
         # print(clock.get_fps())
