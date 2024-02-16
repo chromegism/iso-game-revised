@@ -300,7 +300,18 @@ def main():
     window = sdl2.video.Window('isometric game', (WIDTH, HEIGHT))
     window.resizable = True
     renderer = sdl2.video.Renderer(window, accelerated = 1, vsync = True)
-    renderer.logical_size = (WIDTH, HEIGHT)
+
+    bwbh_wh_ratio = (BASE_HEIGHT * WIDTH) / (BASE_WIDTH * HEIGHT)
+
+    if bwbh_wh_ratio < 1:
+        LOGICAL_WIDTH = BASE_WIDTH * min(1, bwbh_wh_ratio)
+        LOGICAL_HEIGHT = BASE_HEIGHT * max(1, bwbh_wh_ratio)
+        renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
+
+    else:
+        LOGICAL_WIDTH = BASE_WIDTH * max(1, 1 / bwbh_wh_ratio)
+        LOGICAL_HEIGHT = BASE_HEIGHT * min(1, 1 / bwbh_wh_ratio)
+        renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
 
     clock = pygame.time.Clock()
 
@@ -425,7 +436,18 @@ def main():
                 HEIGHT = window.size[1]
 
                 renderer.set_viewport(pygame.Rect(0, 0, WIDTH, HEIGHT))
-                renderer.logical_size = (BASE_WIDTH * zoom, BASE_HEIGHT * zoom)
+
+                bwbh_wh_ratio = (BASE_HEIGHT * WIDTH) / (BASE_WIDTH * HEIGHT)
+
+                if bwbh_wh_ratio < 1:
+                    LOGICAL_WIDTH = BASE_WIDTH * min(1, bwbh_wh_ratio)
+                    LOGICAL_HEIGHT = BASE_HEIGHT * max(1, bwbh_wh_ratio)
+                    renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
+
+                else:
+                    LOGICAL_WIDTH = BASE_WIDTH * max(1, 1 / bwbh_wh_ratio)
+                    LOGICAL_HEIGHT = BASE_HEIGHT * min(1, 1 / bwbh_wh_ratio)
+                    renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
 
             elif event.type == pygame.MOUSEWHEEL:
                 zoom += sign(event.y) / 10
@@ -440,8 +462,8 @@ def main():
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
         if mouse_clicked[0]:
-            viewport_pos[0] += (mouse_x - last_mouse_x) * max((BASE_WIDTH / WIDTH), (BASE_HEIGHT / HEIGHT)) * zoom
-            viewport_pos[1] += (mouse_y - last_mouse_y) * max((BASE_WIDTH / WIDTH), (BASE_HEIGHT / HEIGHT)) * zoom
+            viewport_pos[0] += (mouse_x - last_mouse_x) * (LOGICAL_WIDTH / WIDTH) * zoom
+            viewport_pos[1] += (mouse_y - last_mouse_y) * (LOGICAL_HEIGHT / HEIGHT) * zoom
 
         world.render_chunks(1.5, viewport_pos, (BASE_WIDTH * zoom, BASE_HEIGHT * zoom))
 
