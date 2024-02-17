@@ -52,26 +52,18 @@ class Noise_Terrain:
 
     def generate_noise(self, seed: int | None = None, func = lambda x: x):
         pic = np.zeros((self.sizex, self.sizey), np.float16)
-        #pic = []
 
         print(f'generating noise')
 
-        for i in tqdm(range(self.sizex)):
-            # print(f'row {i + 1} / {self.chunksx * 32}')
-            row = []
-            for j in range(self.sizey):
-                noise_val = 0
-                for c, noise in enumerate(self.noise_arr):
-                    noise_val += 1 / self.base ** c * noise([i / self.sizex, j / self.sizey])
+        for k in tqdm(range(self.sizex * self.sizey)):
+            i, j = divmod(k,  self.sizex)
+            noise_val = 0
+            for c, noise in enumerate(self.noise_arr):
+                noise_val += 1 / self.base ** c * noise([i / self.sizex, j / self.sizey])
 
-                #row.append(min(max((func(noise_val) + 1) / 2, -1), 1))
-                pic[i][j] = min(max((func(noise_val) + 1) / 2, -1), 1)
-
-            #pic.append(row)
+            pic[i][j] = min(max((func(noise_val) + 1) / 2, -1), 1)
 
         self.noise_pic = pic
-        #plt.imshow(self.noise_pic, cmap='gray', vmin=0, vmax = 1)
-        #plt.show()
         return pic
 
     def gaussian_blur(self, kernel_size = 5):
@@ -324,8 +316,8 @@ def main():
     BASE_WIDTH = 1920
     BASE_HEIGHT = 1080
 
-    CHUNKSX = 32
-    CHUNKSY = 32
+    CHUNKSX = 128
+    CHUNKSY = 128
 
     zoom = 1
 
