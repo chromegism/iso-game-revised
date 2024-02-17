@@ -15,25 +15,12 @@ from perlin_noise import PerlinNoise
 from math import *
 import numpy as np
 import multiprocessing as mp
+from tools import *
 
 import shutil
 
 global layers, buildings
 layers, buildings = {}, {}
-
-def sign(x: int | float):
-    if x != 0:
-        return x / abs(x)
-    else:
-        return 0
-
-def to_cartesian(coords: tuple) -> tuple:
-    """Converts Cartesian coordinates (x, y) into Isometric view coordinates"""
-
-    x = - coords[0] + coords[1]
-    y = coords[0] + coords[1]
-
-    return (x, y)
 
 class Noise_Terrain:
     def __init__(self, octaves: tuple | list, chunks: tuple | list, base = 2):
@@ -103,7 +90,7 @@ def start_packing():
     os.mkdir('map')
 
 def pack_world(file_name):
-    shutil.make_archive(f'saves/{file_name}', 'zip', 'map')
+    shutil.make_archive(f'saves/python/{file_name}', 'zip', 'map')
         
     for i in os.listdir('map'):
         os.remove(f'map/{i}')
@@ -111,7 +98,7 @@ def pack_world(file_name):
     os.rmdir('map')
 
 def unpack_world(file_name):
-    shutil.unpack_archive(f'saves/{file_name}.zip', 'map')
+    shutil.unpack_archive(f'saves/python/{file_name}.zip', 'map')
 
 def rm_temp_world():
     for i in os.listdir('map'):
@@ -316,8 +303,8 @@ def main():
     BASE_WIDTH = 1920
     BASE_HEIGHT = 1080
 
-    CHUNKSX = 128
-    CHUNKSY = 128
+    CHUNKSX = 4
+    CHUNKSY = 4
 
     zoom = 1
 
