@@ -18,70 +18,50 @@ import multiprocessing as mp
 
 import shutil
 
-global layers, sprites
-layers, sprites = {}, {}
+from tools import *
 
-def sign(x: int | float):
-    if x != 0:
-        return x / abs(x)
-    else:
-        return 0
-
-def average_of_list(x: list | tuple | set):
-    return sum(x)/len(x)
-
-def to_cartesian(coords: tuple) -> tuple:
-    """Converts Cartesian coordinates (x, y) into Isometric view coordinates"""
-
-    x = - coords[0] + coords[1]
-    y = coords[0] + coords[1]
-
-    return (x, y)
+global layers, buildings
+layers, buildings = {}, {}
 
 class Noise_Terrain:
-    def __init__(self, octaves: tuple | list, chunks: tuple | list, base = 2):
+    def __init__(self, chunks: tuple | list):
         self.noise_arr = []
 
         self.chunksx = chunks[0]
         self.chunksy = chunks[1]
 
-        for i in octaves:
-            self.noise_arr.append(PerlinNoise(i * (self.chunksx + self.chunksy) / 6))
-
         self.sizex = self.chunksx * 32
         self.sizey = self.chunksy * 32
 
-        self.base = base
 
-    def generate_noise(self, seed: int | None = None, func = lambda x: x):
-        pic = np.zeros((self.sizex, self.sizey), np.float16)
-        #pic = []
+    def generate_pixel(self, x, y):
+        val = 0
+        for counter, octave in enumerate(self.octave_arr):
+            val += 1 / self.diviser ** counter * octave([x / self.sizex, y / self.sizey])
 
-        print(f'generating noise')
+        return val
 
-        for i in tqdm(range(self.sizex)):
-            # print(f'row {i + 1} / {self.chunksx * 32}')
-            row = []
-            for j in range(self.sizey):
-                noise_val = 0
-                for c, noise in enumerate(self.noise_arr):
-                    noise_val += 1 / self.base ** c * noise([i / self.sizex, j / self.sizey])
 
-                #row.append(min(max((func(noise_val) + 1) / 2, -1), 1))
-                pic[i][j] = min(max((func(noise_val) + 1) / 2, -1), 1)
+    def generate_noise(self, octaves: tuple | list, diviser: float, func = lambda x: x) -> np.ndarray:
+        self.octave_arr = [
+            PerlinNoise(octave * (self.chunksx + self.chunksy) / 6) 
+            for octave in octaves
+            ]
+        
+        self.diviser = diviser
 
-            #pic.append(row)
+        self.pic = np.zeros((self.sizex, self.sizey))
 
-        self.noise_pic = pic
-        #plt.imshow(self.noise_pic, cmap='gray', vmin=0, vmax = 1)
-        #plt.show()
-        return pic
+        print('generating noise')
+        for i in tqdm(range(self.sizex * self.sizey)):
 
-    def gaussian_blur(self, kernel_size = 5):
-        self.noise_pic = gaussian_filter(self.noise_pic, kernel_size)
+            x, y = divmod(i, self.sizex)
 
-    def turn_into_chunkarrays(self, sp):
-        self.split_noise_pic = []
+            self.pic[x, y] = make_in_bounds((func(self.generate_pixel(x, y)) + 1) / 2, 0, 1)
+
+
+    def turn_into_chunkarrays(self, layernames):
+        self.split_pic = []
 
         print(f'creating chunks')
 
@@ -89,40 +69,47 @@ class Noise_Terrain:
         for i in tqdm(range(self.chunksx)):
             ch2 = []
             for j in range(self.chunksy):
-                default_full_chunk = []
+                chunk = []
                 for x in range(32):
                     for y in range(32):
-                        layer = self.noise_pic[i * 32 + x][j * 32 + y] * (len(sp) - 1)
-                        default_full_chunk.append((x, y, layer, sp[round(layer)]))
+                        layer = self.pic[i * 32 + x][j * 32 + y] * (len(layernames) - 1)
+                        chunk.append((x, y, layer, layernames[round(layer)]))
 
-                ch2.append(default_full_chunk)
+                ch2.append(chunk)
 
             ch1.append(ch2)
 
         return ch1
     
+    
     def save_to_file(self):
-        np.save(f'map/terrain', self.noise_pic, allow_pickle=False)
+        np.save(f'map/terrain', self.pic, allow_pickle=False)
+        
 
     def load_from_file(self):
         print('loading chunks')
 
         for i in tqdm(range(1)):
-            self.noise_pic = np.load(f'map/terrain.npy', allow_pickle=False)
+            self.pic = np.load(f'map/terrain.npy', allow_pickle=False)
+
             
 def start_packing():
     os.mkdir('map')
 
+
 def pack_world(file_name):
-    shutil.make_archive(f'{file_name}', 'zip', 'map')
+    shutil.make_archive(f'saves/{file_name}', 'zip', 'map')
+
         
     for i in os.listdir('map'):
         os.remove(f'map/{i}')
 
     os.rmdir('map')
 
+
 def unpack_world(file_name):
-    shutil.unpack_archive(f'{file_name}.zip', 'map')
+    shutil.unpack_archive(f'saves/{file_name}.zip', 'map')
+
 
 def rm_temp_world():
     for i in os.listdir('map'):
@@ -130,10 +117,12 @@ def rm_temp_world():
 
     os.rmdir('map')
 
+
 class sdl2_tile:
     def __init__(self, texture: sdl2.video.Texture, rect: pygame.Rect | None = None):
         self.texture = texture
         self.rect = rect
+
 
 class Tile_Group:
     def __init__(self, tiles: list | tuple):
@@ -145,14 +134,15 @@ class Tile_Group:
                     return True
                 
         return False
+    
 
     def draw(self, renderer: sdl2.video.Renderer, viewport_pos: tuple | list, viewport_size: tuple | list):
         x_off = viewport_pos[0]
         y_off = viewport_pos[1]
 
         fblits_pass = [
-            (spr.texture, (spr.rect.x + x_off, spr.rect.y + y_off))
-            for spr in self.tiles
+            (tile.texture, (tile.rect.x + x_off, tile.rect.y + y_off))
+            for tile in self.tiles
         ]
 
         fblits_pass = [tile for tile in fblits_pass if self.is_in_bounds(tile, viewport_size)]
@@ -160,17 +150,20 @@ class Tile_Group:
         for i in fblits_pass:
             renderer.blit(i[0], pygame.Rect(i[1][0], i[1][1], i[0].width, i[0].height))
 
+
     def add(self, tile: sdl2_tile):
         self.tiles.append(tile)
 
-class sdl2_sprite:
+
+class sdl2_building:
     def __init__(self, texture: sdl2.video.Texture, tiles_size: tuple | list, rect: pygame.Rect | None = None):
         self.texture = texture
         self.rect = rect
         self.tilesx = tiles_size[0]
         self.tilesy = tiles_size[1]
 
-class Sprite_Group:
+
+class building_Group:
     def __init__(self, tiles: list | tuple):
         self.tiles = list(tiles)
 
@@ -180,6 +173,7 @@ class Sprite_Group:
                     return True
                 
         return False
+    
 
     def draw(self, renderer: sdl2.video.Renderer, viewport_pos: tuple | list, viewport_size: tuple | list):
         x_off = viewport_pos[0]
@@ -195,8 +189,10 @@ class Sprite_Group:
         for i in fblits_pass:
             renderer.blit(i[0], pygame.Rect(i[1][0], i[1][1] - 16 + i[0].height, i[0].width, i[0].height))
 
+
     def add(self, tile: sdl2_tile):
         self.tiles.append(tile)
+
 
 class Chunk:
     '''A 32x32 chunk of tiles, buildings and entities'''
@@ -212,8 +208,10 @@ class Chunk:
         self.layernames = layernames
         self.layerimgs = layerimgs
 
+
     def sort_tiles(self):
         self.tiles.sort(key = lambda x: x[0] + x[1])
+
 
     def build(self):
         for tile in self.tiles:
@@ -233,8 +231,10 @@ class Chunk:
                 spr.rect = pygame.Rect((x * w / 2 - 32, y * h / 2 - z * 14, w, th))
                 self.tile_group.add(spr)
 
+
     def blit_on(self, viewport_pos: tuple| list, viewport_size: tuple | list):
         self.tile_group.draw(self.renderer, viewport_pos, viewport_size)
+
 
     def add_tile(self, tile: tuple | list, sort_tiles = True, rerender = True):
         self.tiles.append(tuple(tile))
@@ -244,6 +244,7 @@ class Chunk:
         
         if rerender:
             self.build()
+
 
     def add_tiles(self, tiles: tuple | list, sort_tiles = True, rerender = True):
         for tile in tiles:
@@ -255,6 +256,7 @@ class Chunk:
         if rerender:
             self.build()
 
+
     def __len__(self):
         return len(self.tiles)
     
@@ -264,20 +266,24 @@ class Chunk:
     # def get_size(self):
     #     return (max(self.tiles, key=lambda x: x[0]) - min(self.tiles, key=lambda x: x[0]), max(self.tiles, key=lambda x: x[1]) - min(self.tiles, key=lambda x: x[1]))
 
+
 class Chunk_Group:
     def __init__(self, renderer):
         self.chunks = []
         self.renderer = renderer
 
+
     def add_chunk(self, chunk: Chunk):
         self.chunks.append(chunk)
 
+
     def sort_chunks(self):
         self.chunks.sort(key=lambda i: i.x + i.y)
+        
 
     def render_chunks(self, render_distance: float | int, viewport_pos: tuple | list, viewport_size: tuple | list):
-        viewport_center = to_cartesian(((- viewport_pos[0] + (viewport_size[0] / 2)) / (64 * 32),(- viewport_pos[1]) / (32 * 32)))
-        # viewport_center = to_cartesian((- viewport_pos[0] / (64 * 32), - viewport_pos[1] / (32 * 32)))
+        # viewport_center = to_cartesian(((- viewport_pos[0] + (viewport_size[0] / 2)) / (64 * 32),(- viewport_pos[1]) / (32 * 32)))
+        viewport_center = to_cartesian(((- viewport_pos[0] + viewport_size[0] / 2) / 2048, (- viewport_pos[1] + viewport_size[1] / 2) / 1024))
 
         for c in self.chunks:
             if c.x - viewport_center[0] >= - render_distance and c.x - viewport_center[0] <= render_distance and c.y - viewport_center[1] >= - render_distance and c.y - viewport_center[1] <= render_distance:
@@ -285,17 +291,19 @@ class Chunk_Group:
 
                 c.blit_on((viewport_pos[0] + x * 32 * 32, viewport_pos[1] + y * 16 * 32), (viewport_size[0], viewport_size[1]))
 
+
     def build_chunks(self):
         print(f'rendering chunks')
 
         for c in tqdm(self.chunks):
             c.build()
 
+
 def create_noise(q, x, y, names, alive, from_file=False, load_file=None):
-    test_noise = Noise_Terrain((2, 6), (x, y), base=4)
+    test_noise = Noise_Terrain((x, y))
 
     if not from_file:
-        test_noise.generate_noise(func=lambda x: sign(x) * (-e ** (-16 * x ** 2) + 1))
+        test_noise.generate_noise([2, 6], 4, func=lambda x: sign(x) * (-e ** (-16 * x ** 2) + 1))
         #test_noise.gaussian_blur()
         start_packing()
         test_noise.save_to_file()
@@ -312,6 +320,7 @@ def create_noise(q, x, y, names, alive, from_file=False, load_file=None):
     print('passing to main process')
 
     alive.value = 0
+
 
 def main():
     args = sys.argv[1:]
@@ -330,23 +339,11 @@ def main():
     CHUNKSX = 8
     CHUNKSY = 8
 
-    zoom = 0.75
+    zoom = 1
 
     window = sdl2.video.Window('isometric game', (WIDTH, HEIGHT))
     window.resizable = True
     renderer = sdl2.video.Renderer(window, accelerated = 1, vsync = True)
-
-    bwbh_wh_ratio = (BASE_HEIGHT * WIDTH) / (BASE_WIDTH * HEIGHT)
-
-    if bwbh_wh_ratio < 1:
-        LOGICAL_WIDTH = BASE_WIDTH * min(1, bwbh_wh_ratio)
-        LOGICAL_HEIGHT = BASE_HEIGHT * max(1, bwbh_wh_ratio)
-        renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
-
-    else:
-        LOGICAL_WIDTH = BASE_WIDTH * max(1, 1 / bwbh_wh_ratio)
-        LOGICAL_HEIGHT = BASE_HEIGHT * min(1, 1 / bwbh_wh_ratio)
-        renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
 
     clock = pygame.time.Clock()
 
@@ -366,12 +363,12 @@ def main():
     for i, name in enumerate(tile_names):
         layers[name] = tile_textures[i]
 
-    split_sprite_file = os.listdir("sprites/")
+    split_building_file = os.listdir("buildings/")
 
-    sprite_names = [x[:-4] for x in split_sprite_file]
+    building_names = [x[:-4] for x in split_building_file]
 
-    sprite_images = [pygame.image.load(f'sprites/{x}') for x in split_sprite_file]
-    sprite_textures = [sdl2.video.Texture.from_surface(renderer, x) for x in sprite_images]
+    building_images = [pygame.image.load(f'buildings/{x}') for x in split_building_file]
+    building_textures = [sdl2.video.Texture.from_surface(renderer, x) for x in building_images]
 
     for i, name in enumerate(tile_names):
         layers[name] = tile_textures[i]
@@ -448,8 +445,20 @@ def main():
 
     world.build_chunks()
 
-    spr = sdl2_sprite(sprite_textures[2], (2, 2), pygame.Rect(-1, 0, 128, 128))
-    sprgr = Sprite_Group([spr])
+    spr = sdl2_building(building_textures[2], (2, 2), pygame.Rect(-1, 0, 128, 128))
+    sprgr = building_Group([spr])
+
+    bwbh_wh_ratio = (BASE_HEIGHT * WIDTH) / (BASE_WIDTH * HEIGHT)
+
+    if bwbh_wh_ratio < 1:
+        LOGICAL_WIDTH = BASE_WIDTH * min(1, bwbh_wh_ratio)
+        LOGICAL_HEIGHT = BASE_HEIGHT * max(1, bwbh_wh_ratio)
+        renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
+
+    else:
+        LOGICAL_WIDTH = BASE_WIDTH * max(1, 1 / bwbh_wh_ratio)
+        LOGICAL_HEIGHT = BASE_HEIGHT * min(1, 1 / bwbh_wh_ratio)
+        renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
 
     while True:
         renderer.clear()
