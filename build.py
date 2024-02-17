@@ -498,6 +498,8 @@ def main():
                     renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
 
             elif event.type == pygame.MOUSEWHEEL:
+                prev_logical_size = renderer.logical_size
+
                 zoom += - sign(event.y) / 20
                 zoom = max(0.1, zoom)
                 zoom = min(zoom, 2)
@@ -513,6 +515,10 @@ def main():
                     LOGICAL_WIDTH = BASE_WIDTH * max(1, 1 / bwbh_wh_ratio)
                     LOGICAL_HEIGHT = BASE_HEIGHT * min(1, 1 / bwbh_wh_ratio)
                     renderer.logical_size = (LOGICAL_WIDTH * zoom, LOGICAL_HEIGHT * zoom)
+
+                if zoom > 0.01 and zoom < 2:
+                    viewport_pos[0] -= (prev_logical_size[0] - renderer.logical_size[0]) / (WIDTH / mouse_x)
+                    viewport_pos[1] -= (prev_logical_size[1] - renderer.logical_size[1]) / (HEIGHT / mouse_y)
 
         mouse_clicked = pygame.mouse.get_pressed()
 
