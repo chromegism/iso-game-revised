@@ -22,7 +22,7 @@ import shutil
 global layers, buildings
 layers, buildings = {}, {}
 
-class Noise_Terrain:
+class Noise_Gen:
     def __init__(self, octaves: tuple | list, chunks: tuple | list, base = 2):
         self.noise_arr = []
 
@@ -268,7 +268,7 @@ class Chunk_Group:
             c.build()
 
 def create_noise(q, x, y, names, alive, from_file=False, load_file=None):
-    test_noise = Noise_Terrain((2, 6), (x, y), base=4)
+    test_noise = Noise_Gen((2, 6), (x, y), base=4)
 
     if not from_file:
         test_noise.generate_noise(func=lambda x: sign(x) * (-e ** (-16 * x ** 2) + 1))

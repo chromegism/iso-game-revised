@@ -19,3 +19,6 @@ def divmod(num, x):
     from math import floor
 
     return [num % x, floor(num / x)]
+
+if __name__ == '__main__':
+    print(divmod(42, 37))
