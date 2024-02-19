@@ -206,7 +206,7 @@ class Chunk:
                 h = w / 2
                 th = spr.texture.height
 
-                spr.rect = pygame.Rect((x * w / 2 - 32, y * h / 2 - z * 14, w, th))
+                spr.rect = pygame.Rect((x * w / 2, y * h / 2 - z * 14, w, th))
                 self.tile_group.add(spr)
 
     def blit_on(self, viewport_pos: tuple| list, viewport_size: tuple | list):

@@ -15,7 +15,7 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-float sign (float x)
+float sign(float x)
 {
 	if (!x == 0)
 	{
@@ -28,14 +28,18 @@ float sign (float x)
 }
 
 
-tuple<float, float> to_cartesian(tuple<float, float> coords)
+SDL_Rect isometrify(SDL_Rect coords)
 {
-	float x = - get<0>(coords) + get<1>(coords);
-	float y = get<0>(coords) + get<1>(coords);
+	float x = - coords.x + coords.y;
+	float y = coords.x + coords.y;
 
-	tuple<float, float> t = make_tuple(x, y);
+	SDL_Rect r;
+	r.x = x;
+	r.y = y;
+	r.w = coords.w;
+	r.h = coords.h;
 
-	return t;
+	return r;
 }
 
 
@@ -50,6 +54,7 @@ float make_between_0_1(float val)
 	return max(0.0f, min(val, 1.0f));
 }
 
+
 tuple<int, int> divmod(int num, int modulator)
 {
 	tuple<int, int> t = make_tuple<int, int>(num % modulator, floor(num / modulator));
@@ -63,8 +68,8 @@ class Tile
 	public:
 		SDL_Renderer *renderer;
 		SDL_Texture *texture;
-		SDL_Point size;
 		SDL_Rect rect;
+		SDL_Point iso_pos;
 
 		void render()
 		{
@@ -78,11 +83,11 @@ class TileGroup
 	public:
 		vector<Tile> tiles;
 
-		bool is_in_bounds(Tile tile, int x_off, int y_off, int viewport_size_x, int viewport_size_y)
+		bool is_in_bounds(SDL_Rect rect, int x_off, int y_off, int viewport_size_x, int viewport_size_y)
 		{
-			if (tile.rect.x + x_off + tile.rect.w >= 0 && tile.rect.x + y_off <= viewport_size_x)
+			if (rect.x + x_off + rect.w >= 0 && rect.x + y_off <= viewport_size_x)
 			{
-				if (tile.rect.y + x_off + tile.rect.h >= 0 && tile.rect.y + y_off <= viewport_size_y)
+				if (rect.y + x_off + rect.h >= 0 && rect.y + y_off <= viewport_size_y)
 				{
 					return true;
 				}
@@ -95,9 +100,13 @@ class TileGroup
 		{
 			for (Tile tile : tiles)
 			{
-				if (is_in_bounds(tile, viewport_pos_x, viewport_pos_y, viewport_size_x, viewport_size_y))
-				{
-					SDL_RenderCopy(tile.renderer, tile.texture, NULL, &tile.rect);
+				SDL_Rect isorect = isometrify(tile.rect);
+				isorect.x = isorect.x * 32 + viewport_pos_x;
+				isorect.y = isorect.y * 16 + viewport_pos_y;
+
+				if (is_in_bounds(isorect, viewport_pos_x, viewport_pos_y, viewport_size_x, viewport_size_y))
+				{					
+					SDL_RenderCopy(tile.renderer, tile.texture, NULL, &isorect);
 				}
 			}
 		}
@@ -121,19 +130,34 @@ class Chunk
 
 		void sort_tiles()
 		{
-			
+			sort(tile_group.tiles.begin(), tile_group.tiles.end(), [](const Tile t1, const Tile t2){
+				SDL_Rect rect1 = isometrify(t1.rect);
+				SDL_Rect rect2 = isometrify(t2.rect);
+
+				return (rect1.x + rect1.y < rect2.x + rect2.y);
+				});
 		}
 
-		void add_tile(Tile tile)
+		void add_tile(Tile tile, bool sort = true)
 		{
 			tile_group.tiles.push_back(tile);
+
+			if (sort)
+			{
+				sort_tiles();
+			}
 		}
 
-		void add_tiles(vector<Tile> tiles)
+		void add_tiles(vector<Tile> tiles, bool sort = true)
 		{
 			for (Tile tile : tiles)
 			{
-				add_tile(tile);
+				add_tile(tile, false);
+			}
+
+			if (sort)
+			{
+				sort_tiles();
 			}
 		}
 };
@@ -151,11 +175,11 @@ Tile load_tile(SDL_Renderer *renderer, const char *file)
 	Tile t;
 	t.renderer = renderer;
 	t.texture = IMG_LoadTexture(renderer, file);
-	t.size = gettexturesize(t.texture);
+	SDL_Point size = gettexturesize(t.texture);
 	t.rect.x = 0;
 	t.rect.y = 0;
-	t.rect.w = t.size.x;
-	t.rect.h = t.size.y;
+	t.rect.w = size.x;
+	t.rect.h = size.y;
 
 	return t;
 }
@@ -207,14 +231,23 @@ int main(int argc, char* argv[])
 	for (const auto & entry : fs::directory_iterator("layers")) {
 		fs::path p = entry.path();
 		Tile tile = load_tile(renderer, p.string().c_str());
-		tile.rect.x = gen_rand(0, LOGICAL_WIDTH - 64);
-		tile.rect.y = gen_rand(0, LOGICAL_HEIGHT - 48);
-    	layer_textures.push_back(tile);
+		tile.rect.x = 0;
+		tile.rect.y = texture_count;
+		layer_textures.push_back(tile);
 		texture_count++;
-  	}
+	}
 
-	int viewport_pos_x = 0;
-	int viewport_pos_y = 0;
+	float viewport_pos_x = 0;
+	float viewport_pos_y = 0;
+
+	int mouse_x, mouse_y;
+	int last_mouse_x, last_mouse_y;
+
+	SDL_GetMouseState(&mouse_x, &mouse_y);
+
+	bool mouse_pressed[3];
+
+	float zoom = 1;
 
     bool running = true;
 	SDL_Event event;
@@ -234,7 +267,7 @@ int main(int argc, char* argv[])
 			{
 				case SDL_QUIT:
 					running = false;
-					break;
+					continue;
 
 				case SDL_KEYDOWN:
 					switch(event.key.keysym.sym)
@@ -242,12 +275,52 @@ int main(int argc, char* argv[])
 						case SDLK_ESCAPE:
 						running = false;
 					}
-					break;
+					continue;
+
+				case SDL_MOUSEBUTTONDOWN:
+					if (event.button.button == SDL_BUTTON_LEFT)
+					{
+						mouse_pressed[0] = true;
+					}
+					else if (event.button.button == SDL_BUTTON_MIDDLE)
+					{
+						mouse_pressed[1] = true;
+					}
+					else if (event.button.button == SDL_BUTTON_RIGHT)
+					{
+						mouse_pressed[2] = true;
+					}
+					continue;
+
+				case SDL_MOUSEBUTTONUP:
+					if (event.button.button == SDL_BUTTON_LEFT)
+					{
+						mouse_pressed[0] = false;
+					}
+					else if (event.button.button == SDL_BUTTON_MIDDLE)
+					{
+						mouse_pressed[1] = false;
+					}
+					else if (event.button.button == SDL_BUTTON_RIGHT)
+					{
+						mouse_pressed[2] = false;
+					}
+					continue;
 			}
 		}
 
 		// SDL_RenderCopy(renderer, layer_textures[0].texture, NULL, &layer_textures[0].rect);
 		// layer_textures[gen_rand(0, 8)].render();
+
+		last_mouse_x = mouse_x;
+		last_mouse_y = mouse_y;
+		SDL_GetMouseState(&mouse_x, &mouse_y);
+
+		if (mouse_pressed[0])
+		{
+			viewport_pos_x += (mouse_x - last_mouse_x) * (LOGICAL_WIDTH / ScreenWidth) * zoom;
+			viewport_pos_y += (mouse_y - last_mouse_y) * (LOGICAL_HEIGHT / ScreenHeight) * zoom;
+		}
 
 		ch.draw(viewport_pos_x, viewport_pos_y, LOGICAL_WIDTH, LOGICAL_HEIGHT);
 
