@@ -27,7 +27,6 @@
 
 <ul>
     <li>pygame-ce</li>
-    <li>scipy</li>
     <li>tqdm</li>
     <li>perlin_noise</li>
     <li>numpy</li>

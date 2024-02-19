@@ -44,9 +44,14 @@ float make_in_bounds(float val, float low, float high)
 }
 
 
-tuple<float, float> divmod(float num, float modulator)
+float make_between_0_1(float val)
 {
-	tuple<float, float> t = make_tuple<float, float>(fmod(num, modulator), floor(num / modulator));
+	return max(0, min(val, 1));
+}
+
+tuple<int, int> divmod(int num, int modulator)
+{
+	tuple<int, int> t = make_tuple<int, int>(num % modulator, floor(num / modulator));
 
 	return t;
 }
