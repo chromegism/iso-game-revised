@@ -12,7 +12,7 @@ if "%1" == "python" (
     echo ----- COMPILING -----
     echo:
 
-    g++ -std=c++17 build.cpp -I"C:\Cincludes64" -L"C:\Clibs64" -Wall -lSDL2main -lSDL2 -lSDL2_image -o build
+    g++ -std=c++17 build.cpp -I"Cincludes64" -L"Clibs64" -Wall -lSDL2main -lSDL2 -lSDL2_image -o build
 
     echo:
     echo ----- OUTPUT -----
@@ -25,7 +25,7 @@ if "%1" == "python" (
     echo ----- COMPILING -----
     echo:
 
-    g++ -std=c++17 build.cpp -I"C:\Cincludes32" -L"C:\Clibs32" -Wall -lmingw32 -lSDL2main -lSDL2 -o build
+    g++ -std=c++17 build.cpp -I"Cincludes32" -L"Clibs32" -Wall -lmingw32 -lSDL2main -lSDL2 -o build
 
     echo:
     echo ----- OUTPUT -----
