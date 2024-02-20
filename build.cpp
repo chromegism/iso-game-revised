@@ -85,9 +85,9 @@ class TileGroup
 
 		bool is_in_bounds(SDL_Rect rect, int x_off, int y_off, int viewport_size_x, int viewport_size_y)
 		{
-			if (rect.x + x_off + rect.w >= 0 && rect.x + y_off <= viewport_size_x)
+			if (rect.x + rect.w >= 0 && rect.x <= viewport_size_x)
 			{
-				if (rect.y + x_off + rect.h >= 0 && rect.y + y_off <= viewport_size_y)
+				if (rect.y + rect.h >= 0 && rect.y <= viewport_size_y)
 				{
 					return true;
 				}
@@ -245,7 +245,7 @@ int main(int argc, char* argv[])
 
 	SDL_GetMouseState(&mouse_x, &mouse_y);
 
-	bool mouse_pressed[3];
+	bool mouse_pressed[] = {false, false, false};
 
 	float zoom = 1;
 
@@ -276,6 +276,32 @@ int main(int argc, char* argv[])
 						running = false;
 					}
 					continue;
+
+				case SDL_WINDOWEVENT:
+					if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+					{
+						printf("screen resized\n");
+						SDL_GetWindowSize(window, &ScreenWidth, &ScreenHeight);
+
+						float fLOGICAL_WIDTH = LOGICAL_WIDTH;
+						float fLOGICAL_HEIGHT = LOGICAL_HEIGHT;
+						float fScreenWidth = ScreenWidth;
+						float fScreenHeight = ScreenHeight;
+						float lwlh_wh_ratio = (fLOGICAL_WIDTH * fScreenWidth) / (fLOGICAL_HEIGHT * fScreenHeight);
+
+						if (lwlh_wh_ratio < 1)
+						{
+							SDL_RenderSetLogicalSize(renderer, LOGICAL_WIDTH * lwlh_wh_ratio * zoom, LOGICAL_HEIGHT * zoom);
+							printf("%f, %f", LOGICAL_WIDTH * lwlh_wh_ratio * zoom, LOGICAL_HEIGHT * zoom);
+						}
+						else
+						{
+							SDL_RenderSetLogicalSize(renderer, LOGICAL_WIDTH * (1 / lwlh_wh_ratio) * zoom, LOGICAL_HEIGHT * zoom);
+							printf("%f, %f", LOGICAL_WIDTH * (1 / lwlh_wh_ratio) * zoom, LOGICAL_HEIGHT * zoom);
+						}
+
+						continue;
+					}
 
 				case SDL_MOUSEBUTTONDOWN:
 					if (event.button.button == SDL_BUTTON_LEFT)
