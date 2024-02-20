@@ -457,7 +457,7 @@ int main(int argc, char* argv[])
 					{
 						viewport_pos_x -= (prev_RenderWidth - RenderWidth) / (fScreenWidth / event.wheel.preciseY);
 						viewport_pos_y -= (prev_RenderHeight - RenderHeight) / (fScreenHeight / event.wheel.preciseY);
-						printf("%f, %f\n", (prev_RenderWidth - RenderWidth) / (fScreenWidth / event.wheel.preciseY), (prev_RenderHeight - RenderHeight) / (fScreenHeight / event.wheel.preciseY));
+						// printf("%f, %f\n", (prev_RenderWidth - RenderWidth) / (fScreenWidth / event.wheel.preciseY), (prev_RenderHeight - RenderHeight) / (fScreenHeight / event.wheel.preciseY));
 					}
 
 					continue;
@@ -477,7 +477,7 @@ int main(int argc, char* argv[])
 			viewport_pos_y += (mouse_y - last_mouse_y) * (RenderHeight / ScreenHeight) * zoom;
 		}
 
-		ch.draw(viewport_pos_x, viewport_pos_y, RenderWidth, RenderHeight);
+		ch.draw(viewport_pos_x, viewport_pos_y, RenderWidth * zoom, RenderHeight * zoom);
 
 		SDL_RenderPresent(renderer);
     }
