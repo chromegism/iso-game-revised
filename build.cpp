@@ -7,10 +7,12 @@
 #include <vector>
 #include <filesystem>
 #include <algorithm>
+#include <functional>
+#include <array>
 #undef main
 
-#define LOGICAL_WIDTH  1280
-#define LOGICAL_HEIGHT 720
+#define LOGICAL_WIDTH  1920
+#define LOGICAL_HEIGHT 1080
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -116,8 +118,7 @@ class TileGroup
 class Chunk
 {
 	public:
-		int x;
-		int y;
+		SDL_Rect rect; // in world coordinates
 
 		SDL_Renderer *renderer;
 
@@ -138,7 +139,7 @@ class Chunk
 				});
 		}
 
-		void add_tile(Tile tile, bool sort = true)
+		void add_tile(Tile &tile, bool sort = true)
 		{
 			tile_group.tiles.push_back(tile);
 
@@ -148,7 +149,7 @@ class Chunk
 			}
 		}
 
-		void add_tiles(vector<Tile> tiles, bool sort = true)
+		void add_tiles(vector<Tile> &tiles, bool sort = true)
 		{
 			for (Tile tile : tiles)
 			{
@@ -185,14 +186,92 @@ Tile load_tile(SDL_Renderer *renderer, const char *file)
 }
 
 
+class ChunkGroup
+{
+	public:
+		vector<Chunk> chunks;
+		SDL_Renderer *renderer;
+
+		void sort_chunks()
+		{
+			sort(chunks.begin(), chunks.end(), [](Chunk &c1, Chunk &c2){
+				SDL_Rect r1 = isometrify(c1.rect);
+				SDL_Rect r2 = isometrify(c2.rect);
+
+				return (r1.x + r1.y < r2.x + r2.y);
+			});
+		}
+
+		void add_chunk(const Chunk &c, bool sort = true)
+		{
+			chunks.push_back(c);
+
+			if (sort)
+			{
+				sort_chunks();
+			}
+		}
+
+		void add_chunks(const vector<Chunk> &cs, bool sort = true)
+		{
+			for (Chunk c : cs)
+			{
+				add_chunk(c, false);
+			}
+
+			if (sort)
+			{
+				sort_chunks();
+			}
+		}
+
+		void draw(int viewport_pos_x, int viewport_pos_y, int viewport_size_x, int viewport_size_y)
+		{
+			for (Chunk &c : chunks)
+			{
+				c.draw(viewport_pos_x, viewport_pos_y, viewport_size_x, viewport_size_y);
+			}
+		}
+};
+
+
+// void generate_terrain(ChunkGroup &group, int chunks_x, int chunks_y, vector<int> octaves, float base, function<float(float)> &func)
+void generate_terrain(int chunks_x, int chunks_y)
+{
+	for (int k1 = 0; k1 < chunks_x * chunks_y; k1++)
+	{
+		auto [i, j] = divmod(k1, chunks_x);
+
+		for (int k2 = 0; k2 < 1024; k2++)
+		{
+			auto [x, y] = divmod(k2, 32);
+		}
+
+		printf("%i, %i\n", i, j);
+		
+	}
+}
+
+
 int gen_rand(int min, int max)
 {
 	return rand() % (max - min + 1) + min;
 }
 
 
+struct {
+	bool lmb = false;
+	bool mmb = false;
+	bool rmb = false;
+	bool smb1 = false;
+	bool smb2 = false;
+} mouse;
+
+
 int main(int argc, char* argv[])
 {
+	generate_terrain(3, 2);
+
 	int ScreenWidth = 1280;
 	int ScreenHeight = 720;
 
@@ -237,6 +316,9 @@ int main(int argc, char* argv[])
 		texture_count++;
 	}
 
+	float RendererWidth = LOGICAL_WIDTH;
+	float RendererHeight = LOGICAL_HEIGHT;
+
 	float viewport_pos_x = 0;
 	float viewport_pos_y = 0;
 
@@ -244,8 +326,6 @@ int main(int argc, char* argv[])
 	int last_mouse_x, last_mouse_y;
 
 	SDL_GetMouseState(&mouse_x, &mouse_y);
-
-	bool mouse_pressed[] = {false, false, false};
 
 	float zoom = 1;
 
@@ -280,57 +360,101 @@ int main(int argc, char* argv[])
 				case SDL_WINDOWEVENT:
 					if (event.window.event == SDL_WINDOWEVENT_RESIZED)
 					{
-						printf("screen resized\n");
 						SDL_GetWindowSize(window, &ScreenWidth, &ScreenHeight);
 
 						float fLOGICAL_WIDTH = LOGICAL_WIDTH;
 						float fLOGICAL_HEIGHT = LOGICAL_HEIGHT;
 						float fScreenWidth = ScreenWidth;
 						float fScreenHeight = ScreenHeight;
-						float lwlh_wh_ratio = (fLOGICAL_WIDTH * fScreenWidth) / (fLOGICAL_HEIGHT * fScreenHeight);
+						float lwlh_wh_ratio = (fLOGICAL_HEIGHT * fScreenWidth) / (fLOGICAL_WIDTH * fScreenHeight);
 
-						if (lwlh_wh_ratio < 1)
+						if (lwlh_wh_ratio <= 1)
 						{
-							SDL_RenderSetLogicalSize(renderer, LOGICAL_WIDTH * lwlh_wh_ratio * zoom, LOGICAL_HEIGHT * zoom);
-							printf("%f, %f", LOGICAL_WIDTH * lwlh_wh_ratio * zoom, LOGICAL_HEIGHT * zoom);
+							RendererWidth = fLOGICAL_WIDTH * lwlh_wh_ratio;
+							RendererHeight = fLOGICAL_HEIGHT;
+							SDL_RenderSetLogicalSize(renderer, RendererWidth * zoom, RendererHeight * zoom);
 						}
 						else
 						{
-							SDL_RenderSetLogicalSize(renderer, LOGICAL_WIDTH * (1 / lwlh_wh_ratio) * zoom, LOGICAL_HEIGHT * zoom);
-							printf("%f, %f", LOGICAL_WIDTH * (1 / lwlh_wh_ratio) * zoom, LOGICAL_HEIGHT * zoom);
+							RendererWidth = fLOGICAL_WIDTH;
+							RendererHeight = fLOGICAL_HEIGHT * (1 / lwlh_wh_ratio);
+							SDL_RenderSetLogicalSize(renderer, RendererWidth * zoom, RendererHeight * zoom);
 						}
 
 						continue;
 					}
 
 				case SDL_MOUSEBUTTONDOWN:
-					if (event.button.button == SDL_BUTTON_LEFT)
+					switch (event.button.button)
 					{
-						mouse_pressed[0] = true;
+						case SDL_BUTTON_LEFT:
+							mouse.lmb = true;
+							continue;
+
+						case SDL_BUTTON_MIDDLE:
+							mouse.mmb = true;
+							continue;
+
+						case SDL_BUTTON_RIGHT:
+							mouse.rmb = true;
+							continue;
 					}
-					else if (event.button.button == SDL_BUTTON_MIDDLE)
-					{
-						mouse_pressed[1] = true;
-					}
-					else if (event.button.button == SDL_BUTTON_RIGHT)
-					{
-						mouse_pressed[2] = true;
-					}
+
 					continue;
 
 				case SDL_MOUSEBUTTONUP:
-					if (event.button.button == SDL_BUTTON_LEFT)
+					switch (event.button.button)
 					{
-						mouse_pressed[0] = false;
+						case SDL_BUTTON_LEFT:
+							mouse.lmb = false;
+							continue;
+
+						case SDL_BUTTON_MIDDLE:
+							mouse.mmb = false;
+							continue;
+
+						case SDL_BUTTON_RIGHT:
+							mouse.rmb = false;
+							continue;
 					}
-					else if (event.button.button == SDL_BUTTON_MIDDLE)
+
+					continue;
+
+				case SDL_MOUSEWHEEL:
+					float prev_RendererWidth = RendererWidth;
+					float prev_RendererHeight = RendererHeight;
+
+					zoom -= event.wheel.preciseY / 20.f;
+					zoom = make_in_bounds(zoom, 0.1, 2);
+
+					SDL_GetWindowSize(window, &ScreenWidth, &ScreenHeight);
+
+					float fLOGICAL_WIDTH = LOGICAL_WIDTH;
+					float fLOGICAL_HEIGHT = LOGICAL_HEIGHT;
+					float fScreenWidth = ScreenWidth;
+					float fScreenHeight = ScreenHeight;
+					float lwlh_wh_ratio = (fLOGICAL_HEIGHT * fScreenWidth) / (fLOGICAL_WIDTH * fScreenHeight);
+
+					if (lwlh_wh_ratio <= 1)
 					{
-						mouse_pressed[1] = false;
+						RendererWidth = fLOGICAL_WIDTH * lwlh_wh_ratio;
+						RendererHeight = fLOGICAL_HEIGHT;
+						SDL_RenderSetLogicalSize(renderer, RendererWidth * zoom, RendererHeight * zoom);
 					}
-					else if (event.button.button == SDL_BUTTON_RIGHT)
+					else
 					{
-						mouse_pressed[2] = false;
+						RendererWidth = fLOGICAL_WIDTH;
+						RendererHeight = fLOGICAL_HEIGHT * (1 / lwlh_wh_ratio);
+						SDL_RenderSetLogicalSize(renderer, RendererWidth * zoom, RendererHeight * zoom);
 					}
+
+					if (zoom > 0.1 && zoom < 2)
+					{
+						viewport_pos_x -= (prev_RendererWidth - RendererWidth) / (fScreenWidth / event.wheel.preciseY);
+						viewport_pos_y -= (prev_RendererHeight - RendererHeight) / (fScreenHeight / event.wheel.preciseY);
+						printf("%f, %f\n", (prev_RendererWidth - RendererWidth) / (fScreenWidth / event.wheel.preciseY), (prev_RendererHeight - RendererHeight) / (fScreenHeight / event.wheel.preciseY));
+					}
+
 					continue;
 			}
 		}
@@ -342,10 +466,10 @@ int main(int argc, char* argv[])
 		last_mouse_y = mouse_y;
 		SDL_GetMouseState(&mouse_x, &mouse_y);
 
-		if (mouse_pressed[0])
+		if (mouse.lmb)
 		{
-			viewport_pos_x += (mouse_x - last_mouse_x) * (LOGICAL_WIDTH / ScreenWidth) * zoom;
-			viewport_pos_y += (mouse_y - last_mouse_y) * (LOGICAL_HEIGHT / ScreenHeight) * zoom;
+			viewport_pos_x += (mouse_x - last_mouse_x) * (RendererWidth / ScreenWidth) * zoom;
+			viewport_pos_y += (mouse_y - last_mouse_y) * (RendererHeight / ScreenHeight) * zoom;
 		}
 
 		ch.draw(viewport_pos_x, viewport_pos_y, LOGICAL_WIDTH, LOGICAL_HEIGHT);
