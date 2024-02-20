@@ -235,8 +235,7 @@ class ChunkGroup
 };
 
 
-// void generate_terrain(ChunkGroup &group, int chunks_x, int chunks_y, vector<int> octaves, float base, function<float(float)> &func)
-void generate_terrain(int chunks_x, int chunks_y)
+void generate_terrain(ChunkGroup &group, int chunks_x, int chunks_y, vector<int> octaves, float base, function<float(float)> func)
 {
 	for (int k1 = 0; k1 < chunks_x * chunks_y; k1++)
 	{
@@ -246,8 +245,6 @@ void generate_terrain(int chunks_x, int chunks_y)
 		{
 			auto [x, y] = divmod(k2, 32);
 		}
-
-		printf("%i, %i\n", i, j);
 		
 	}
 }
@@ -270,8 +267,6 @@ struct {
 
 int main(int argc, char* argv[])
 {
-	generate_terrain(3, 2);
-
 	int ScreenWidth = 1280;
 	int ScreenHeight = 720;
 
@@ -316,6 +311,9 @@ int main(int argc, char* argv[])
 		texture_count++;
 	}
 
+	int ChunksX = 8;
+	int ChunksY = 8;
+
 	float RendererWidth = LOGICAL_WIDTH;
 	float RendererHeight = LOGICAL_HEIGHT;
 
@@ -336,6 +334,13 @@ int main(int argc, char* argv[])
 
 	Chunk ch;
 	ch.add_tiles(layer_textures);
+
+	vector<int> octaves = {2, 6};
+
+	ChunkGroup chunk_group;
+	generate_terrain(chunk_group, ChunksX, ChunksY, octaves, 4, [](float x){
+		return (sign(x) * (- expf(-16 * x * x) + 1));
+	});
 
     while (running)
     {
