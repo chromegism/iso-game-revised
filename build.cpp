@@ -85,7 +85,7 @@ class TileGroup
 	public:
 		vector<Tile> tiles;
 
-		bool is_in_bounds(SDL_Rect rect, int x_off, int y_off, int viewport_size_x, int viewport_size_y)
+		bool is_in_bounds(SDL_Rect rect, int viewport_size_x, int viewport_size_y)
 		{
 			if (rect.x + rect.w >= 0 && rect.x <= viewport_size_x)
 			{
@@ -106,7 +106,7 @@ class TileGroup
 				isorect.x = isorect.x * 32 + viewport_pos_x;
 				isorect.y = isorect.y * 16 + viewport_pos_y;
 
-				if (is_in_bounds(isorect, viewport_pos_x, viewport_pos_y, viewport_size_x, viewport_size_y))
+				if (is_in_bounds(isorect, viewport_size_x, viewport_size_y))
 				{					
 					SDL_RenderCopy(tile.renderer, tile.texture, NULL, &isorect);
 				}
@@ -314,8 +314,8 @@ int main(int argc, char* argv[])
 	int ChunksX = 8;
 	int ChunksY = 8;
 
-	float RendererWidth = LOGICAL_WIDTH;
-	float RendererHeight = LOGICAL_HEIGHT;
+	float RenderWidth = LOGICAL_WIDTH;
+	float RenderHeight = LOGICAL_HEIGHT;
 
 	float viewport_pos_x = 0;
 	float viewport_pos_y = 0;
@@ -375,15 +375,15 @@ int main(int argc, char* argv[])
 
 						if (lwlh_wh_ratio <= 1)
 						{
-							RendererWidth = fLOGICAL_WIDTH * lwlh_wh_ratio;
-							RendererHeight = fLOGICAL_HEIGHT;
-							SDL_RenderSetLogicalSize(renderer, RendererWidth * zoom, RendererHeight * zoom);
+							RenderWidth = fLOGICAL_WIDTH * lwlh_wh_ratio;
+							RenderHeight = fLOGICAL_HEIGHT;
+							SDL_RenderSetLogicalSize(renderer, RenderWidth * zoom, RenderHeight * zoom);
 						}
 						else
 						{
-							RendererWidth = fLOGICAL_WIDTH;
-							RendererHeight = fLOGICAL_HEIGHT * (1 / lwlh_wh_ratio);
-							SDL_RenderSetLogicalSize(renderer, RendererWidth * zoom, RendererHeight * zoom);
+							RenderWidth = fLOGICAL_WIDTH;
+							RenderHeight = fLOGICAL_HEIGHT * (1 / lwlh_wh_ratio);
+							SDL_RenderSetLogicalSize(renderer, RenderWidth * zoom, RenderHeight * zoom);
 						}
 
 						continue;
@@ -426,11 +426,11 @@ int main(int argc, char* argv[])
 					continue;
 
 				case SDL_MOUSEWHEEL:
-					float prev_RendererWidth = RendererWidth;
-					float prev_RendererHeight = RendererHeight;
+					float prev_RenderWidth = RenderWidth;
+					float prev_RenderHeight = RenderHeight;
 
 					zoom -= event.wheel.preciseY / 20.f;
-					zoom = make_in_bounds(zoom, 0.1, 2);
+					zoom = make_in_bounds(zoom, 0.2, 2);
 
 					SDL_GetWindowSize(window, &ScreenWidth, &ScreenHeight);
 
@@ -442,22 +442,22 @@ int main(int argc, char* argv[])
 
 					if (lwlh_wh_ratio <= 1)
 					{
-						RendererWidth = fLOGICAL_WIDTH * lwlh_wh_ratio;
-						RendererHeight = fLOGICAL_HEIGHT;
-						SDL_RenderSetLogicalSize(renderer, RendererWidth * zoom, RendererHeight * zoom);
+						RenderWidth = fLOGICAL_WIDTH * lwlh_wh_ratio;
+						RenderHeight = fLOGICAL_HEIGHT;
+						SDL_RenderSetLogicalSize(renderer, RenderWidth * zoom, RenderHeight * zoom);
 					}
 					else
 					{
-						RendererWidth = fLOGICAL_WIDTH;
-						RendererHeight = fLOGICAL_HEIGHT * (1 / lwlh_wh_ratio);
-						SDL_RenderSetLogicalSize(renderer, RendererWidth * zoom, RendererHeight * zoom);
+						RenderWidth = fLOGICAL_WIDTH;
+						RenderHeight = fLOGICAL_HEIGHT * (1 / lwlh_wh_ratio);
+						SDL_RenderSetLogicalSize(renderer, RenderWidth * zoom, RenderHeight * zoom);
 					}
 
-					if (zoom > 0.1 && zoom < 2)
+					if (zoom > 0.2 && zoom < 2)
 					{
-						viewport_pos_x -= (prev_RendererWidth - RendererWidth) / (fScreenWidth / event.wheel.preciseY);
-						viewport_pos_y -= (prev_RendererHeight - RendererHeight) / (fScreenHeight / event.wheel.preciseY);
-						printf("%f, %f\n", (prev_RendererWidth - RendererWidth) / (fScreenWidth / event.wheel.preciseY), (prev_RendererHeight - RendererHeight) / (fScreenHeight / event.wheel.preciseY));
+						viewport_pos_x -= (prev_RenderWidth - RenderWidth) / (fScreenWidth / event.wheel.preciseY);
+						viewport_pos_y -= (prev_RenderHeight - RenderHeight) / (fScreenHeight / event.wheel.preciseY);
+						printf("%f, %f\n", (prev_RenderWidth - RenderWidth) / (fScreenWidth / event.wheel.preciseY), (prev_RenderHeight - RenderHeight) / (fScreenHeight / event.wheel.preciseY));
 					}
 
 					continue;
@@ -473,11 +473,11 @@ int main(int argc, char* argv[])
 
 		if (mouse.lmb)
 		{
-			viewport_pos_x += (mouse_x - last_mouse_x) * (RendererWidth / ScreenWidth) * zoom;
-			viewport_pos_y += (mouse_y - last_mouse_y) * (RendererHeight / ScreenHeight) * zoom;
+			viewport_pos_x += (mouse_x - last_mouse_x) * (RenderWidth / ScreenWidth) * zoom;
+			viewport_pos_y += (mouse_y - last_mouse_y) * (RenderHeight / ScreenHeight) * zoom;
 		}
 
-		ch.draw(viewport_pos_x, viewport_pos_y, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+		ch.draw(viewport_pos_x, viewport_pos_y, RenderWidth, RenderHeight);
 
 		SDL_RenderPresent(renderer);
     }
